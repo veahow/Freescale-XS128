@@ -1,8 +1,3 @@
-#include <hidef.h>
-#include <MC9S12XS128.h>
-
-#include "derivative.h"
-
 #define ROW 40
 #define COLUMN 120
 
@@ -14,37 +9,6 @@ unsigned char m = 0;
 
 unsigned char Interval;
 unsigned char Threshold = 0x45;    // 二值化图像阈值 具体数字根据环境情况调动
-
-void PLL_Init(void);
-void TIM_Init(void);
-void SCI0_Init(void);
-void SCI0_Transmit(void);
-
-/*
-    函数名称:main
-    功能描述：主函数
-*/
-void main(void)
-{
-    /* 初始化代码段 */
-    DisableInterrupts;    // 关中断
-
-    PLL_Init();
-    SCI0_Init();
-    TIM_Init();
-
-    EnableInterrupts;    // 开中断
-    for(;;)
-    {
-        if(VSYNCount)
-        {
-            SCI0_Transmit();
-
-            VSYNCount = 0;
-
-        }
-    }
-}
 
 /*
     函数名称:串口发射端程序 SCIO_Transmit

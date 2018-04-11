@@ -31,7 +31,7 @@ void PLL_Init(void)
 /*
     函数名称:PWM_Init(void)
     功能描述:PWM模块初始化函数
-    说明:初始化PWM通道输出PWM波 默认占空比为53%
+    说明:初始化PWM通道输出PWM波 驱动电机默认占空比为53% 驱动舵机默认频率50Hz且占空比为7.5%
 */
 void PWM_Init(void)
 {
@@ -39,20 +39,30 @@ void PWM_Init(void)
     
     // 没有使用PLL_Init()时总线频率为8MHz（预分频后为500K） 使用PLL_Init()后总线频率为24MHz（预分频后为1500K）
     // PWMCLK 选择时钟源
-    PWMPRCLK = 0X04;    // PWMPRCLK寄存器单独给时钟源进行16预分频
+    PWMPRCLK = 0x44;    // PWMPRCLK寄存器单独给时钟源进行16预分频 A、B时钟均为500KHz
+    PWMSCLA = 0x7D;    // SA时钟为2000Hz 计算公式：A时钟频率/2/SCLA
+    PWMSCLB = 0x7D;    // SB时钟为2000Hz 计算公式同上
     
-    PWMCLK_PCLK0 = 0;    // 设A为时钟源
+    // PWM通道选择时钟源
+    PWMCLK_PCLK0 = 1;    // PWM通道0设SA为时钟源 
+    PWMCLK_PCLK2 = 1;    // PWM通道2设SB为时钟源
     
-    PWMSCLA = 0X7D;    // A时钟为2000Hz 计算公式：预分频后的频率/2/SCLA
     PWMPOL_PPOL0 = 1;    // 设置PWMPOL选择输出通道波形的翻转 这里选择上升沿翻转
+    PWMPOL_PPOL2 = 1;
     PWMCAE_CAE0 = 0;    // 左对齐输出
+    PWMCAE_CAE2 = 0;
     
-    // 控制占空比最重要的寄存器操作 可控占空比为53% 54% 55% 57% 58% 60%以上（60%已经转得非常快了）
-    PWMDTY0 = 0x08;    // 占空比为53%
-    PWMPER0 = 0X0F;    // 输出频率为133Hz的波
-    
-    PWMCNT0 = 0x00;    // 0通道计数器清0 本语句暂无用处
-    PWME_PWME0 = 1;    // PWM0通道使能 P0通道为输出通道
+    // 控制占空比最重要的寄存器操作 电机可控占空比为53% 54% 55% 57% 58% 60%以上（60%已经转得非常快了）
+    PWMDTY0 = 0x08;    // PWM0占空比为53%
+    PWMPER0 = 0x0F;    // PWM0输出频率为133Hz的波
+    // 舵机频率、占空比设置
+    PWMDTY2 = 0x03;    // PWM2占空比为7.5%
+    PWMPER2 = 0x28;    // PWM2输出频率为50Hz的波
+
+    PWMCNT = 0x00;    // 0通道计数器清0 本语句暂无用处
+
+    PWME_PWME0 = 1;    // PWM0通道使能 P0通道为输出通道 控制电机IN1口
+    PWME_PWME2 = 1;    // PWM2通道使能 P2通道为输出通道 控制舵机
 }
 
 
@@ -61,7 +71,7 @@ void PWM_Init(void)
     功能描述:行场中断初始化函数
     说明:行中断上升沿触发 场中断下降沿触发
     
-    这里需要考虑如何结合ECT模块进行速度的捕捉
+    这里需要考虑如何结合PIT模块进行速度的捕捉
 */
 void TIM_Init(void)
 {
@@ -81,20 +91,22 @@ void TIM_Init(void)
 */
 void IO_Init(void)
 {
-    DDRP = 0x02;    // 端口P的P0和P1寄存器设置为输出模式 1表示输出
+    DDRP = 0x07;    // 端口P的P0、P1、P2寄存器设置为输出模式 1表示输出
 
     /*
-        Port P为输出端口 需要事先定义为输出端口 DDRP全置1
+        Port P为输出端口 需要事先定义为输出端口
         选用P端口0通道与1通道同直流电机IN1与IN2相连 控制电机的正反转
-        默认电机正转
+        选用P端口2通道与舵机信号线相连 控制舵机转动
+        默认电机为正转
     */
     PTP_PTP0 = 1;
     PTP_PTP1 = 0;
+    PTP_PTP2 = 1;
 }
 
 /*
     函数名称:串口初始化函数 SCI0_Init
-    功能描述:串口1初始化函数？？到底是串口1还是串口0 函数都那样叫了 应该是串口0吧
+    功能描述:串口SCI0初始化 选用PS0和PS1端口分别连接外部串口模块的RXD和TXD
     说明:波特率115200 串口SCI0 波特率的计算 波特率的概念也需要了解一下
 */
 void SCI0_Init(void)
