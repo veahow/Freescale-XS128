@@ -53,15 +53,19 @@ void PWM_Init(void)
     PWMCAE_CAE2 = 0;
     
     // 控制占空比最重要的寄存器操作 电机可控占空比为53% 54% 55% 57% 58% 60%以上（60%已经转得非常快了）
-    PWMDTY0 = 0x08;    // PWM0占空比为53%
+    PWMDTY0 = 0x00;    // PWM0占空比为0
     PWMPER0 = 0x0F;    // PWM0输出频率为133Hz的波
+    PWMDTY1 = 0x00;    // PWM1占空比为0
+    PWMPER1 = 0x0F;    // PWM1输出频率为133Hz的波
+
     // 舵机频率、占空比设置
-    PWMDTY2 = 0x03;    // PWM2占空比为7.5%
+    PWMDTY2 = 0x00;    // PWM2占空比为
     PWMPER2 = 0x28;    // PWM2输出频率为50Hz的波
 
     PWMCNT = 0x00;    // 0通道计数器清0 本语句暂无用处
 
     PWME_PWME0 = 1;    // PWM0通道使能 P0通道为输出通道 控制电机IN1口
+    PWME_PWME1 = 1;    // PWM1通道使能 P1通道为输出通道 控制电机IN2口
     PWME_PWME2 = 1;    // PWM2通道使能 P2通道为输出通道 控制舵机
 }
 
@@ -70,8 +74,6 @@ void PWM_Init(void)
     函数名称:TIM_Init()
     功能描述:行场中断初始化函数
     说明:行中断上升沿触发 场中断下降沿触发
-    
-    这里需要考虑如何结合PIT模块进行速度的捕捉
 */
 void TIM_Init(void)
 {
@@ -85,11 +87,40 @@ void TIM_Init(void)
 }
 
 /*
-    函数名称:IO_Init()
-    功能描述:
+    函数名称:PIT_Init()
+    功能描述:定时中断初始化函数
+    说明:可进行定时中断设置 默认为10ms定时中断
+*/
+void PIT_Init(void)
+{
+    PITCFLMT_PITE = 0;    // 关闭PIT模块
+    PITCE_PCE0 = 1;    // 定时器通道0使能
+    PITMUX_PMUX0 = 0;    // 定时器通道0使用微计数器0
+
+    PITMTLD0 = 80 - 1;    // 8位定时器初值设定 对总线时钟进行80分频得到0.01ms 没有使用PLL时总线时钟为8MHz 
+    PITLD0 = 1000 - 1;    // 16位定时器初值设定 1000*0.01 = 10ms
+    // 定时10ms
+
+    PITINTE_PINTE0 = 1;    // 定时器中断通道0中断使能(溢出中断)
+    PITCFLMT_PITE = 1;    // 定时器通道0使能
+}
+
+void PID_Init(void)
+{
+    sptr->LastError = 0;    // Error[-1]
+    sptr->PrevError = 0;    // Error[-2]
+    sptr->Proportion = P_DATA;    // 比例常数P
+    sptr->Integral = I_DATA;    // 积分常数I
+    sptr->Derivative = D_DATA;    // 微分常数D
+    sptr->SetPoint = 40;    // 目标为40 即速度v=40*4.2=168cm/s
+}
+
+/*
+    函数名称:GPIO_Init()
+    功能描述:IO口初始化函数
     说明:
 */
-void IO_Init(void)
+void GPIO_Init(void)
 {
     DDRP = 0x07;    // 端口P的P0、P1、P2寄存器设置为输出模式 1表示输出
 
