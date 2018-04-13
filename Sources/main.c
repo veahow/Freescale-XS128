@@ -1,125 +1,99 @@
-#include <hidef.h>
-#include <MC9S12XS128.h>
+#include <hidef.h>      /* common defines and macros */
+#include "derivative.h"      /* derivative-specific definitions */
 #include "init.h"
 #include "motor.h"
 #include "servo.h"
 
-/*
-    å›¾åƒå¤„ç†å˜é‡é›†
-*/
-// æ ¹æ®å®é™…å•ç‰‡æœºå®é™…è¿è¡Œé€Ÿåº¦æ¥æ›´æ”¹é‡‡é›†å¤§å°
-#define ROW 40    // å›¾åƒé‡‡é›†è¡Œæ•°
-#define COLUMN 120    // å›¾åƒé‡‡é›†åˆ—æ•°
-#define BLACK 0xFF
-#define WHITE 0x00
-
-unsigned char ImageData[ROW][COLUMN];    // å›¾åƒæ•°ç»„
-unsigned char ImageBitData[ROW][COLUMN];    // äºŒå€¼åŒ–å›¾åƒæ•°ç»„
-
-unsigned char VSYNCount = 0;    // åœºæ•°ç»Ÿè®¡
-unsigned int LineCount = 0;    // è¡Œæ•°ç»Ÿè®¡
-unsigned char m = 0;
-
-unsigned char Interval;    // é‡‡é›†æœ‰æ•ˆè¡Œæ•°é—´éš”
-unsigned char ThresholdValue = 0x45;    // äºŒå€¼åŒ–å›¾åƒé˜ˆå€¼ å…·ä½“æ•°å­—æ ¹æ®ç¯å¢ƒæƒ…å†µè°ƒåŠ¨
-
-/* 
-    PIDæ§åˆ¶å˜é‡é›†
-*/
-// å®šä¹‰PIDç»“æ„ä½“
-typedef struct PID
-{
-    int SetPoint;    // è®¾å®šç›®æ ‡å€¼
-    
-    // PIDå‚æ•°
-    double Proportion;    // æ¯”ä¾‹å¸¸æ•° Proportional Const
-    double Integral;    // ç§¯åˆ†å¸¸æ•° Integral Const
-    double Derivative;    // å¾®åˆ†å¸¸æ•° Derivative Const
-    
-    // è¯¯å·®
-    int LastError;    // Error[-1]
-    int PrevError;    // Error[-2]
-}PID;
-
-static PID sPID;
-static PID *sptr = &sPID;
-
-#define P_DATA 10
-#define I_DATA 0
-#define D_DATA 0
+#define ROW 40
+#define COLUMN 120
 #define HAVE_NEW_VELOCITY 0x01
 
-int g_CurrentVelocity;    // é€Ÿåº¦
-int g_Flag;    // æ ‡å¿—ä½
-unsigned int CurrentVelocity = 0;    // å°è½¦å½“å‰é€Ÿåº¦
-unsigned char vTmpPIT = 0;
-unsigned char flag = 0;
+extern unsigned char ImageData[ROW][COLUMN];
+extern unsigned int VSYNCount;
+extern unsigned int LineCount;
+extern unsigned char Interval;
+extern unsigned char m;
 
-/*
-    PDæ§åˆ¶å˜é‡é›†
-*/
+extern unsigned char CurrentVelocity;
+extern unsigned char flag;
 
 
-void main(void)
-{
-    DisableInterrupts;    // å…³ä¸­æ–­
 
-    // åˆå§‹åŒ–ç¨‹åº
-    PWM_Init();
-    GPIO_Init();
-    PACTL = 0x51;
-    
-    
-    EnableInterrupts;    // å¼€ä¸­æ–­
-    
-    for(;;)
-    {
+
+
+void main(void) {
+  /* put your own code here */
+  DisableInterrupts;    // ¹ØÖĞ¶Ï
+  
+  // ³õÊ¼»¯³ÌĞò
+  PWM_Init();
+  GPIO_Init();
+  PACTL = 0x51;
+  
+  
+  EnableInterrupts;    // ¿ªÖĞ¶Ï
+  
+  
+  for(;;)
+  {
         /*
-        if(å›¾åƒé‡‡é›†å®Œæˆ){
-            å›¾åƒå¤„ç†();
-            èµ›é“è¯†åˆ«();
-            æ–¹å‘æ§åˆ¶();
-            é€Ÿåº¦æ§åˆ¶();
+        if(Í¼Ïñ²É¼¯Íê³É){
+            Í¼Ïñ´¦Àí();
+            ÈüµÀÊ¶±ğ();
+            ·½Ïò¿ØÖÆ();
+            ËÙ¶È¿ØÖÆ();
         }
         */
-    }
+   }
+
+
+	EnableInterrupts;
+
+
+  for(;;) {
+    _FEED_COP(); /* feeds the dog */
+  } /* loop forever */
+  /* please make sure that you never leave main */
 }
 
-/*
-    ä¸­æ–­å¤„ç†å‡½æ•°    
-*/
 
-#pragma CODE_SEG NON_BANNKED    // ä¸­æ–­å‡½æ•°ç½®äºéåˆ†é¡µåŒº
 /*
-    å‡½æ•°åç§°:PIT0()
-    åŠŸèƒ½æè¿°:10mså®šæ—¶æµ‹é€Ÿ
-
-    æœ¬éƒ¨åˆ†éœ€è¦ç ”ç©¶ä¸€ä¸‹
+    ÖĞ¶Ï´¦Àíº¯Êı    
 */
-void interrupt 66 PIT0(void)    // æ•æ‰ä¸­æ–­å·ä¸º66çš„äº‹ä»¶è¿›è¡Œå¤„ç†
+#pragma CODE_SEG __NEAR_SEG NON_BANKED    //Ö¸Ê¾¸Ã³ÌĞòÔÚ²»·ÖÒ³Çø
+/*
+    º¯ÊıÃû³Æ:PIT0()
+    ¹¦ÄÜÃèÊö:10ms¶¨Ê±²âËÙ
+
+    ±¾²¿·ÖĞèÒªÑĞ¾¿Ò»ÏÂ
+*/
+void interrupt 66 PIT0(void)    // ²¶×½ÖĞ¶ÏºÅÎª66µÄÊÂ¼ş½øĞĞ´¦Àí
 {
-    // ç›®å‰æ˜¯ç›´æ¥æµ‹é€Ÿ å®šæ—¶ä»…ä¸º10ms 
-    CurrentVelocity = PACNT;    // PT7å£æµ‹é€Ÿå¯¹åº”PACNTå¯„å­˜å™¨                  
-    PACNT = 0x0000;    // PACNTæ¸…é›¶  
-    g_Flag |= HAVE_NEW_VELOCITY;
+    // Ä¿Ç°ÊÇÖ±½Ó²âËÙ ¶¨Ê±½öÎª10ms 
+    CurrentVelocity = PACNT;    // PT7¿Ú²âËÙ¶ÔÓ¦PACNT¼Ä´æÆ÷                  
+    PACNT = 0x0000;    // PACNTÇåÁã  
+    flag |= HAVE_NEW_VELOCITY;
 
     /*
     vTmpPIT++;
     if(vTmpPIT == ??) vTmpPIT = 0;
+    // ÕâÀïÓÃÓÚ¸Ä±ä¶¨Ê±ÖĞ¶ÏµÄÊ±¼ä ±¶³ËÒÔÄ¬ÈÏµÄ¶¨Ê±
     
     */
-    PITTF_PTF0 = 1;    //æ¸…ä¸­æ–­æ ‡å¿—ä½
+    PITTF_PTF0 = 1;    //ÇåÖĞ¶Ï±êÖ¾Î»
 }        
 
+#pragma CODE_SEG NON_BANNKED    // ÖĞ¶Ïº¯ÊıÖÃÓÚ·Ç·ÖÒ³Çø
+#pragma CODE_SEG __NEAR_SEG NON_BANKED    //Ö¸Ê¾¸Ã³ÌĞòÔÚ²»·ÖÒ³Çø
 /*
-    å‡½æ•°åç§°:è¡Œä¸­æ–­å¤„ç†å‡½æ•°
-    åŠŸèƒ½æè¿°:è¡Œä¸­æ–­å¤„ç†
+    º¯ÊıÃû³Æ:ĞĞÖĞ¶Ï´¦Àíº¯Êı
+    ¹¦ÄÜÃèÊö:ĞĞÖĞ¶Ï´¦Àí
 */
-interrupt 8 void HREF_Count(void)    // æ•æ‰ä¸­æ–­å·ä¸º8äº‹ä»¶è¿›è¡Œå¤„ç†
+interrupt 8 void HREF_Count(void)    // ²¶×½ÖĞ¶ÏºÅÎª8ÊÂ¼ş½øĞĞ´¦Àí
 {
     TFLG1_C0F = 1;
     m++;
-    if ( m < 6 || m > 240 ) return;    //åˆ¤æ–­æ˜¯å¦ä»æ–°çš„ä¸€åœºå¼€å§‹
+    if ( m < 6 || m > 240 ) return;    //ÅĞ¶ÏÊÇ·ñ´ÓĞÂµÄÒ»³¡¿ªÊ¼
     
     Interval = 6;
     if(m % Interval == 0)
@@ -247,21 +221,27 @@ interrupt 8 void HREF_Count(void)    // æ•æ‰ä¸­æ–­å·ä¸º8äº‹ä»¶è¿›è¡Œå¤„ç†
         
         LineCount++;
     }
+
+    if(LineCount == ROW) TIE = 0x02;    // ¿ª³¡ÖĞ¶Ï
   
 }
 
 /*
-    å‡½æ•°åç§°:åœºä¸­æ–­å¤„ç†å‡½æ•°
-    åŠŸèƒ½æè¿°:åœºä¸­æ–­å¤„ç†
+    º¯ÊıÃû³Æ:³¡ÖĞ¶Ï´¦Àíº¯Êı
+    ¹¦ÄÜÃèÊö:³¡ÖĞ¶Ï´¦Àí
 */
 interrupt 9 void VSYN_Interrupt(void)
 {
-    TFLG1_C1F = 1;    //æ¸…åœºä¸­æ–­
-    TFLG1_C0F = 1;    //æ¸…è¡Œä¸­æ–­
+    TFLG1_C1F = 1;    //Çå³¡ÖĞ¶Ï
+    TFLG1_C0F = 1;    //ÇåĞĞÖĞ¶Ï
     
-    LineCount = 0; //è¡Œè®¡æ•°å™¨
+    LineCount = 0;    //ĞĞ¼ÆÊıÆ÷
     VSYNCount = ++VSYNCount;
+    m = 0;
+
+    TIE_C0I = 1;
+    TIE_C1I = 0;    // ¿ªĞĞÖĞ¶Ï
 }
 
 
-#pragma CODE_SEG DEFAULT    // åç»­ä»£ç ç½®äºåˆ†é¡µåŒº
+#pragma CODE_SEG DEFAULT    // ºóĞø´úÂëÖÃÓÚ·ÖÒ³Çø
